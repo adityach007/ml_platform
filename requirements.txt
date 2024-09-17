@@ -4,3 +4,4 @@ numpy==1.21.2
 scikit-learn==0.24.2
 plotly==5.3.1
 seaborn
+distutils-pytest
