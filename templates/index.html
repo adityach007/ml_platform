@@ -1,0 +1,170 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Platform</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        h1 { color: #333; }
+        .section { margin-bottom: 20px; }
+        button { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        input[type="file"], select { margin-bottom: 10px; }
+        #visualizationContainer { width: 100%; height: 400px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ML Platform</h1>
+        
+        <div class="section">
+            <h2>1. Upload Dataset</h2>
+            <input type="file" id="fileInput" accept=".csv">
+            <button onclick="uploadFile()">Upload</button>
+        </div>
+        
+        <div class="section">
+            <h2>2. Preprocess Data</h2>
+            <button onclick="preprocessData()">Preprocess</button>
+        </div>
+        
+        <div class="section">
+            <h2>3. Train Model</h2>
+            <select id="algorithmSelect">
+                <option value="linear_regression">Linear Regression</option>
+                <option value="logistic_regression">Logistic Regression</option>
+                <option value="decision_tree">Decision Tree</option>
+                <option value="random_forest">Random Forest</option>
+            </select>
+            <input type="text" id="targetColumn" placeholder="Target Column Name">
+            <button onclick="trainModel()">Train</button>
+        </div>
+        
+        <div class="section">
+            <h2>4. Visualize Data</h2>
+            <select id="vizTypeSelect">
+                <option value="histogram">Histogram</option>
+                <option value="scatter">Scatter Plot</option>
+                <option value="bar">Bar Chart</option>
+                <option value="box">Box Plot</option>
+                <option value="heatmap">Heatmap</option>
+            </select>
+            <input type="text" id="column1" placeholder="Column 1">
+            <input type="text" id="column2" placeholder="Column 2 (if applicable)">
+            <button onclick="visualizeData()">Visualize</button>
+        </div>
+        
+        <div id="visualizationContainer"></div>
+    </div>
+
+    <script>
+        let currentFilename = '';
+
+        function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            $.ajax({
+                url: '/upload',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    alert(response.success);
+                    currentFilename = response.filename;
+                },
+                error: function(xhr, status, error) {
+                    alert('Error uploading file: ' + error);
+                }
+            });
+        }
+
+        function preprocessData() {
+            if (!currentFilename) {
+                alert('Please upload a file first.');
+                return;
+            }
+
+            $.ajax({
+                url: '/preprocess',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({filename: currentFilename}),
+                success: function(response) {
+                    alert(response.success);
+                },
+                error: function(xhr, status, error) {
+                    alert('Error preprocessing data: ' + error);
+                }
+            });
+        }
+
+        function trainModel() {
+            if (!currentFilename) {
+                alert('Please upload and preprocess a file first.');
+                return;
+            }
+
+            const algorithm = document.getElementById('algorithmSelect').value;
+            const targetColumn = document.getElementById('targetColumn').value;
+
+            $.ajax({
+                url: '/train',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    filename: currentFilename,
+                    algorithm: algorithm,
+                    target_column: targetColumn
+                }),
+                success: function(response) {
+                    if (response.mse) {
+                        alert(`Model trained successfully. MSE: ${response.mse}`);
+                    } else {
+                        alert(`Model trained successfully. Accuracy: ${response.accuracy}`);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('Error training model: ' + error);
+                }
+            });
+        }
+
+        function visualizeData() {
+            if (!currentFilename) {
+                alert('Please upload and preprocess a file first.');
+                return;
+            }
+
+            const vizType = document.getElementById('vizTypeSelect').value;
+            const column1 = document.getElementById('column1').value;
+            const column2 = document.getElementById('column2').value;
+
+            $.ajax({
+                url: '/visualize',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    filename: currentFilename,
+                    viz_type: vizType,
+                    columns: [column1, column2].filter(Boolean)
+                }),
+                success: function(response) {
+                    const plotData = JSON.parse(response.plot);
+                    Plotly.newPlot('visualizationContainer', plotData.data, plotData.layout);
+                },
+                error: function(xhr, status, error) {
+                    alert('Error visualizing data: ' + error);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
